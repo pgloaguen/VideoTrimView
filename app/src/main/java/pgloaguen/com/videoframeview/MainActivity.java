@@ -6,19 +6,19 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 
-import pgloaguen.com.library.VideoFrameView;
+import pgloaguen.com.library.VideoTrimView;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int SELECT_VIDEO = 1000;
 
-    private VideoFrameView videoFrameView;
+    private VideoTrimView videoTrimView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        videoFrameView = (VideoFrameView) findViewById(R.id.videoframe);
+        videoTrimView = (VideoTrimView) findViewById(R.id.videoframe);
         findViewById(R.id.btn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
 
         if(resultCode == RESULT_OK && requestCode == SELECT_VIDEO){
             Uri videoUri = data.getData();
-            videoFrameView.setVideo(videoUri);
+            videoTrimView.setVideo(videoUri);
 
         }
     }

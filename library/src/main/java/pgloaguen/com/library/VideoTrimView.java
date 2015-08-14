@@ -79,6 +79,8 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
 
         int leftCursorRightPosition = (int) ((cursorRightX * width) - demiCursorWidth);
         mCursorRightView.layout(leftCursorRightPosition, 0, leftCursorRightPosition + width, heigth);
+
+        videoFrameView.setPixelsPerSecond(width / widthInSecond);
     }
 
     @Override
@@ -111,11 +113,13 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
     }
 
     private boolean isCursorLeftTriggeredScroll;
+    private boolean isCursorRightTriggeredScroll;
 
     @Override
     public boolean onDown(MotionEvent e) {
         isCursorLeftTriggeredScroll = isCursorLeftTouch(e.getX());
-        return isCursorLeftTriggeredScroll || isCursorRightTouch(e.getX());
+        isCursorRightTriggeredScroll = isCursorRightTouch(e.getX());
+        return isCursorLeftTriggeredScroll || isCursorRightTriggeredScroll;
     }
 
     @Override
@@ -123,12 +127,16 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
         if (isCursorLeftTriggeredScroll) {
             cursorLeftX -= distanceX/getWidth();
             cursorLeftX = Math.max(Math.min(cursorLeftX, cursorRightX - minBetweenCursorInPercent), 0f);
-        } else {
+            requestLayout();
+            return true;
+        } else if (isCursorRightTriggeredScroll) {
             cursorRightX -= distanceX/getWidth();
             cursorRightX = Math.min(Math.max(cursorRightX, cursorLeftX + minBetweenCursorInPercent), 1.0f);
+            requestLayout();
+            return true;
+        } else {
+            return false;
         }
-        requestLayout();
-        return true;
     }
 
     @Override

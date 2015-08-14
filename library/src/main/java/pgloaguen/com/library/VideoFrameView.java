@@ -31,6 +31,7 @@ public class VideoFrameView extends RecyclerView {
     private Uri uri;
     private String path;
     private LruBitmapCache bitmapCache;
+    private float pixelsPerSecond;
 
     public VideoFrameView(Context context) {
         super(context);
@@ -96,10 +97,20 @@ public class VideoFrameView extends RecyclerView {
         initLayout();
     }
 
+    public void setPixelsPerSecond(float nbPixelsForOneSecond) {
+        if (pixelsPerSecond != nbPixelsForOneSecond) {
+            pixelsPerSecond = nbPixelsForOneSecond;
+            if (getAdapter() != null) {
+                ((Adapter)getAdapter()).setPixelsPerSecond(pixelsPerSecond);
+            }
+        }
+    }
+
     private void initLayout() {
         bitmapCache = new LruBitmapCache((int) (Runtime.getRuntime().maxMemory() / 1024 / 16));
         setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
-        setAdapter(new Adapter(mediaMetadataRetriever, bitmapCache));
+        setAdapter(new Adapter(mediaMetadataRetriever, bitmapCache, 120));
+        ((Adapter)getAdapter()).setPixelsPerSecond(pixelsPerSecond);
     }
 
     private void release() {
@@ -128,24 +139,23 @@ public class VideoFrameView extends RecyclerView {
 
         private MyMediaMetadataRetriever mediaMetadataRetriever;
         private long videoDurationInMs;
-        private int nbItems;
         private LruBitmapCache bitmapCache;
+        private float pixelsPerSecond;
+        private int photoWidth;
 
-        public Adapter(MyMediaMetadataRetriever mediaMetadataRetriever, LruBitmapCache bitmapCache) {
+        public Adapter(MyMediaMetadataRetriever mediaMetadataRetriever, LruBitmapCache bitmapCache, int photoWidth) {
             this.mediaMetadataRetriever = mediaMetadataRetriever;
             this.bitmapCache = bitmapCache;
+            this.photoWidth = photoWidth;
             videoDurationInMs = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
-
-            // We want to display one frame per second
-            nbItems = (int) (videoDurationInMs / 1000);
         }
 
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
-            SquareImageView squareImageView = new SquareImageView(viewGroup.getContext());
-            squareImageView.setLayoutParams(new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            squareImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            return new ViewHolder(squareImageView);
+            ImageView photoView = new ImageView(viewGroup.getContext());
+            photoView.setLayoutParams(new LayoutParams(photoWidth, ViewGroup.LayoutParams.MATCH_PARENT));
+            photoView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            return new ViewHolder(photoView);
         }
 
         @Override
@@ -154,12 +164,14 @@ public class VideoFrameView extends RecyclerView {
                 viewHolder.extractBitmap.cancel(true);
             }
 
-            Bitmap bitmap = bitmapCache.get(i * 1000000l);
+            long frameAtInUSecond = Math.min((long) (photoWidth / pixelsPerSecond) * i * 1000000l, videoDurationInMs * 1000l);
+
+            Bitmap bitmap = bitmapCache.get(frameAtInUSecond);
             ((ImageView) viewHolder.itemView).setImageBitmap(bitmap);
 
             if (bitmap == null) {
                 viewHolder.extractBitmap =
-                        new ExtractBitmap(mediaMetadataRetriever, bitmapCache, (ImageView) viewHolder.itemView, i * 1000000);
+                        new ExtractBitmap(mediaMetadataRetriever, bitmapCache, (ImageView) viewHolder.itemView, frameAtInUSecond);
 
                 viewHolder.extractBitmap.execute();
             }
@@ -167,7 +179,14 @@ public class VideoFrameView extends RecyclerView {
 
         @Override
         public int getItemCount() {
-            return nbItems;
+            return (int) Math.ceil((videoDurationInMs / (photoWidth / pixelsPerSecond) / 1000f));
+        }
+
+        public void setPixelsPerSecond(float nbPixelsForOneSecond) {
+            if (pixelsPerSecond != nbPixelsForOneSecond) {
+                pixelsPerSecond = nbPixelsForOneSecond;
+                notifyDataSetChanged();
+            }
         }
 
         public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -243,25 +262,4 @@ public class VideoFrameView extends RecyclerView {
             return (int) (value.getRowBytes() * value.getHeight()/ 1024f);
         }
     }
-
-    public static class SquareImageView extends ImageView {
-
-        public SquareImageView(Context context) {
-            super(context);
-        }
-
-        public SquareImageView(Context context, AttributeSet attrs) {
-            super(context, attrs);
-        }
-
-        public SquareImageView(Context context, AttributeSet attrs, int defStyle) {
-            super(context, attrs, defStyle);
-        }
-
-        @Override
-        public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            super.onMeasure(heightMeasureSpec, heightMeasureSpec);
-        }
-    }
-
 }

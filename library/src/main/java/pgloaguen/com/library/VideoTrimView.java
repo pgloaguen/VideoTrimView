@@ -23,10 +23,14 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
 
     private GestureDetector gestureDetector;
 
+    private final float minTrimInSecond = 3;
+    private final float widthInSecond = 15;
+    private final float minBetweenCursorInPercent = minTrimInSecond / widthInSecond;
 
     private float cursorLeftX = 0f;
     private float cursorRightX = 1.0f;
     private int demiCursorWidth = 40;
+
 
     public VideoTrimView(Context context) {
         super(context);
@@ -69,13 +73,12 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
 
         int heigth = bottom - top;
         int width = (right - left);
-        int demiWidth = width / 2;
 
         int rightCursorLeftPosition = (int) ((cursorLeftX * width) + demiCursorWidth);
-        mCursorLeftView.layout(rightCursorLeftPosition - demiWidth, 0, rightCursorLeftPosition, heigth);
+        mCursorLeftView.layout(rightCursorLeftPosition - width, 0, rightCursorLeftPosition, heigth);
 
         int leftCursorRightPosition = (int) ((cursorRightX * width) - demiCursorWidth);
-        mCursorRightView.layout(leftCursorRightPosition, 0, leftCursorRightPosition + demiWidth, heigth);
+        mCursorRightView.layout(leftCursorRightPosition, 0, leftCursorRightPosition + width, heigth);
     }
 
     @Override
@@ -107,26 +110,25 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
         return x > mCursorRightView.getLeft();
     }
 
+    private boolean isCursorLeftTriggeredScroll;
+
     @Override
     public boolean onDown(MotionEvent e) {
-        return isCursorLeftTouch(e.getX()) || isCursorRightTouch(e.getX());
+        isCursorLeftTriggeredScroll = isCursorLeftTouch(e.getX());
+        return isCursorLeftTriggeredScroll || isCursorRightTouch(e.getX());
     }
 
     @Override
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-        if (isCursorLeftTouch(e1.getX())) {
+        if (isCursorLeftTriggeredScroll) {
             cursorLeftX -= distanceX/getWidth();
-            cursorLeftX = Math.max(Math.min(cursorLeftX, 0.45f), 0f);
-            requestLayout();
-            return true;
-        } else if (isCursorRightTouch(e1.getX())){
-            cursorRightX -= distanceX/getWidth();
-            cursorRightX = Math.min(Math.max(cursorRightX, 0.55f), 1.0f);
-            requestLayout();
-            return true;
+            cursorLeftX = Math.max(Math.min(cursorLeftX, cursorRightX - minBetweenCursorInPercent), 0f);
         } else {
-            return false;
+            cursorRightX -= distanceX/getWidth();
+            cursorRightX = Math.min(Math.max(cursorRightX, cursorLeftX + minBetweenCursorInPercent), 1.0f);
         }
+        requestLayout();
+        return true;
     }
 
     @Override

@@ -1,7 +1,6 @@
 package pgloaguen.com.library;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.net.Uri;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
@@ -60,7 +59,6 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
-        setBackgroundColor(Color.RED);
         addView(videoFrameView);
 
         View borderView = new View(getContext());

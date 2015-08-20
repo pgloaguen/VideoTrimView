@@ -31,6 +31,8 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
     private float cursorRightX = 1.0f;
     private int demiCursorWidth = 40;
 
+    private onTrimPositionListener onTrimPositionListener;
+
 
     public VideoTrimView(Context context) {
         super(context);
@@ -85,11 +87,19 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
+        float startInSecond = videoFrameView.getStartInMs();
+        onTrimPositionListener.onTrimPositionUpdated(startInSecond + (widthInSecond * cursorLeftX),
+                Math.min(videoFrameView.getVideoDurationInMs()/1000f, startInSecond + (widthInSecond * cursorRightX)));
+
         if(!gestureDetector.onTouchEvent(event)) {
             return super.dispatchTouchEvent(event);
         }
 
         return true;
+    }
+
+    public void setOnTrimPositionListener(onTrimPositionListener listener) {
+        onTrimPositionListener = listener;
     }
 
     public void setVideo(Uri uri) {
@@ -153,5 +163,9 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
         return false;
+    }
+
+    public interface onTrimPositionListener {
+        void onTrimPositionUpdated(float startInS, float endInS);
     }
 }

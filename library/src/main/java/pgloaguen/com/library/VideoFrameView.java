@@ -32,6 +32,7 @@ public class VideoFrameView extends RecyclerView {
     private String path;
     private LruBitmapCache bitmapCache;
     private float pixelsPerSecond;
+    private long videoDurationInMs;
 
     public VideoFrameView(Context context) {
         super(context);
@@ -109,7 +110,8 @@ public class VideoFrameView extends RecyclerView {
     private void initLayout() {
         bitmapCache = new LruBitmapCache((int) (Runtime.getRuntime().maxMemory() / 1024 / 16));
         setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
-        setAdapter(new Adapter(mediaMetadataRetriever, bitmapCache, 120));
+        videoDurationInMs = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+        setAdapter(new Adapter(mediaMetadataRetriever, bitmapCache, 120, videoDurationInMs));
         ((Adapter)getAdapter()).setPixelsPerSecond(pixelsPerSecond);
     }
 
@@ -119,6 +121,14 @@ public class VideoFrameView extends RecyclerView {
             mediaMetadataRetriever = null;
             bitmapCache.evictAll();
         }
+    }
+
+    public float getStartInMs() {
+        return computeHorizontalScrollOffset() / pixelsPerSecond;
+    }
+
+    public long getVideoDurationInMs() {
+        return videoDurationInMs;
     }
 
     private static class MyMediaMetadataRetriever extends MediaMetadataRetriever {
@@ -143,11 +153,11 @@ public class VideoFrameView extends RecyclerView {
         private float pixelsPerSecond;
         private int photoWidth;
 
-        public Adapter(MyMediaMetadataRetriever mediaMetadataRetriever, LruBitmapCache bitmapCache, int photoWidth) {
+        public Adapter(MyMediaMetadataRetriever mediaMetadataRetriever, LruBitmapCache bitmapCache, int photoWidth, long videoDurationInMs) {
             this.mediaMetadataRetriever = mediaMetadataRetriever;
             this.bitmapCache = bitmapCache;
             this.photoWidth = photoWidth;
-            videoDurationInMs = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+            this.videoDurationInMs = videoDurationInMs;
         }
 
         @Override

@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.TextView;
 
 import pgloaguen.com.library.VideoTrimView;
 
@@ -13,18 +14,27 @@ public class MainActivity extends AppCompatActivity {
     private static final int SELECT_VIDEO = 1000;
 
     private VideoTrimView videoTrimView;
+    private TextView rangeTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         videoTrimView = (VideoTrimView) findViewById(R.id.videoframe);
+        rangeTextView = (TextView) findViewById(R.id.range);
         findViewById(R.id.btn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
                 photoPickerIntent.setType("video/*");
                 startActivityForResult(photoPickerIntent, SELECT_VIDEO);
+            }
+        });
+
+        videoTrimView.setOnTrimPositionListener(new VideoTrimView.onTrimPositionListener() {
+            @Override
+            public void onTrimPositionUpdated(float startInS, float endInS) {
+                rangeTextView.setText(startInS + " " + endInS);
             }
         });
     }

@@ -67,9 +67,8 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
         borderView.setBackgroundResource(R.drawable.border_trim_video);
         addView(borderView);
 
-        mCursorLeftView.setBackgroundResource(R.drawable.cursor_trim_video);
-        mCursorLeftView.setRotation(180);
-        mCursorRightView.setBackgroundResource(R.drawable.cursor_trim_video);
+        mCursorLeftView.setBackgroundResource(R.drawable.trim_video_left);
+        mCursorRightView.setBackgroundResource(R.drawable.trim_video_right);
 
         addView(mCursorLeftView);
         addView(mCursorRightView);

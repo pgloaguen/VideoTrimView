@@ -33,6 +33,8 @@ public class VideoFrameView extends RecyclerView {
     private LruBitmapCache bitmapCache;
     private float pixelsPerSecond;
     private long videoDurationInMs;
+    private FrameAdapterDelegate frameAdapterDelegate;
+    private float widthInSecond;
 
     public VideoFrameView(Context context) {
         super(context);
@@ -73,6 +75,12 @@ public class VideoFrameView extends RecyclerView {
     }
 
     @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        setPixelsPerSecond((r - l) / widthInSecond);
+    }
+
+    @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         release();
@@ -98,7 +106,7 @@ public class VideoFrameView extends RecyclerView {
         initLayout();
     }
 
-    public void setPixelsPerSecond(float nbPixelsForOneSecond) {
+    private void setPixelsPerSecond(float nbPixelsForOneSecond) {
         if (pixelsPerSecond != nbPixelsForOneSecond) {
             pixelsPerSecond = nbPixelsForOneSecond;
             if (getAdapter() != null) {
@@ -107,12 +115,25 @@ public class VideoFrameView extends RecyclerView {
         }
     }
 
+    public void setDelegateAdapter(FrameAdapterDelegate frameAdapterDelegate) {
+        this.frameAdapterDelegate = frameAdapterDelegate;
+        if (getAdapter() != null) {
+            initAdapter();
+        }
+    }
+
     private void initLayout() {
         bitmapCache = new LruBitmapCache((int) (Runtime.getRuntime().maxMemory() / 1024 / 16));
         setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
         videoDurationInMs = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
-        setAdapter(new Adapter(mediaMetadataRetriever, bitmapCache, 120, videoDurationInMs));
-        ((Adapter)getAdapter()).setPixelsPerSecond(pixelsPerSecond);
+        initAdapter();
+        ((Adapter) getAdapter()).setPixelsPerSecond(pixelsPerSecond);
+    }
+
+    private void initAdapter() {
+        FrameAdapterDelegate adapterDelegate = frameAdapterDelegate == null ? new DefaultFrameAdapterDelegate() : frameAdapterDelegate;
+        setAdapter(
+                new Adapter(adapterDelegate, mediaMetadataRetriever, bitmapCache, videoDurationInMs));
     }
 
     private void release() {
@@ -131,6 +152,10 @@ public class VideoFrameView extends RecyclerView {
         return videoDurationInMs;
     }
 
+    public void setWidthInSecond(float widthInSecond) {
+        this.widthInSecond = widthInSecond;
+    }
+
     private static class MyMediaMetadataRetriever extends MediaMetadataRetriever {
         private boolean isReleased;
 
@@ -145,51 +170,87 @@ public class VideoFrameView extends RecyclerView {
         }
     }
 
-    private static class Adapter extends RecyclerView.Adapter<Adapter.ViewHolder> {
+    public abstract static class FrameAdapterDelegate <V extends RecyclerView.ViewHolder> {
+        public abstract V onCreateViewHolder(ViewGroup viewGroup, int i);
+        public abstract void onBindViewHolder(V viewHolder, int i);
+        public abstract ImageView getImageViewToDisplayFrame(V viewHolder);
+        public abstract int getPhotoWidth();
+    }
+
+    private static class DefaultFrameAdapterDelegate extends FrameAdapterDelegate<DefaultFrameAdapterDelegate.ViewHolderDelegate> {
+
+        @Override
+        public ViewHolderDelegate onCreateViewHolder(ViewGroup viewGroup, int i) {
+            ImageView photoView = new ImageView(viewGroup.getContext());
+            photoView.setLayoutParams(new LayoutParams(120, ViewGroup.LayoutParams.MATCH_PARENT));
+            photoView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            return new ViewHolderDelegate(photoView);
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolderDelegate viewHolder, int i) {}
+
+        @Override
+        public ImageView getImageViewToDisplayFrame(ViewHolderDelegate viewHolder) {
+            return (ImageView) viewHolder.itemView;
+        }
+
+        @Override
+        public int getPhotoWidth() {
+            return 120;
+        }
+
+        public static class ViewHolderDelegate extends RecyclerView.ViewHolder {
+            public ViewHolderDelegate(View itemView) {
+                super(itemView);
+            }
+        }
+    }
+
+    private static class Adapter<V extends RecyclerView.ViewHolder, T extends FrameAdapterDelegate<V>> extends RecyclerView.Adapter<Adapter.ViewHolder<V>> {
 
         private MyMediaMetadataRetriever mediaMetadataRetriever;
         private long videoDurationInMs;
         private LruBitmapCache bitmapCache;
         private float pixelsPerSecond;
-        private int photoWidth;
+        private T adapterDelegate;
 
-        public Adapter(MyMediaMetadataRetriever mediaMetadataRetriever, LruBitmapCache bitmapCache, int photoWidth, long videoDurationInMs) {
+        public Adapter(T adapterDelegate, MyMediaMetadataRetriever mediaMetadataRetriever, LruBitmapCache bitmapCache, long videoDurationInMs) {
+            this.adapterDelegate = adapterDelegate;
             this.mediaMetadataRetriever = mediaMetadataRetriever;
             this.bitmapCache = bitmapCache;
-            this.photoWidth = photoWidth;
             this.videoDurationInMs = videoDurationInMs;
         }
 
         @Override
-        public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
-            ImageView photoView = new ImageView(viewGroup.getContext());
-            photoView.setLayoutParams(new LayoutParams(photoWidth, ViewGroup.LayoutParams.MATCH_PARENT));
-            photoView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            return new ViewHolder(photoView);
+        public ViewHolder<V> onCreateViewHolder(ViewGroup viewGroup, int i) {
+            return new ViewHolder<V>(adapterDelegate.onCreateViewHolder(viewGroup, i));
         }
 
         @Override
-        public void onBindViewHolder(ViewHolder viewHolder, int i) {
+        public void onBindViewHolder(ViewHolder<V> viewHolder, int i) {
             if (viewHolder.extractBitmap != null) {
                 viewHolder.extractBitmap.cancel(true);
             }
 
-            long frameAtInUSecond = Math.min((long) (photoWidth / pixelsPerSecond) * i * 1000000l, videoDurationInMs * 1000l);
+            long frameAtInUSecond = Math.min((long) (adapterDelegate.getPhotoWidth() / pixelsPerSecond) * i * 1000000l, videoDurationInMs * 1000l);
 
             Bitmap bitmap = bitmapCache.get(frameAtInUSecond);
-            ((ImageView) viewHolder.itemView).setImageBitmap(bitmap);
+            adapterDelegate.getImageViewToDisplayFrame(viewHolder.viewHolderDelegate).setImageBitmap(bitmap);
 
             if (bitmap == null) {
                 viewHolder.extractBitmap =
-                        new ExtractBitmap(mediaMetadataRetriever, bitmapCache, (ImageView) viewHolder.itemView, frameAtInUSecond);
+                        new ExtractBitmap(mediaMetadataRetriever, bitmapCache, adapterDelegate.getImageViewToDisplayFrame(viewHolder.viewHolderDelegate), frameAtInUSecond);
 
                 viewHolder.extractBitmap.execute();
             }
+
+            adapterDelegate.onBindViewHolder(viewHolder.viewHolderDelegate, i);
         }
 
         @Override
         public int getItemCount() {
-            return (int) Math.ceil((videoDurationInMs / (photoWidth / pixelsPerSecond) / 1000f));
+            return (int) Math.ceil((videoDurationInMs / (adapterDelegate.getPhotoWidth()  / pixelsPerSecond) / 1000f));
         }
 
         public void setPixelsPerSecond(float nbPixelsForOneSecond) {
@@ -199,10 +260,13 @@ public class VideoFrameView extends RecyclerView {
             }
         }
 
-        public static class ViewHolder extends RecyclerView.ViewHolder {
+        public static class ViewHolder<V extends RecyclerView.ViewHolder> extends RecyclerView.ViewHolder {
             public ExtractBitmap extractBitmap;
-            public ViewHolder(View itemView) {
-                super(itemView);
+            private V viewHolderDelegate;
+
+            public ViewHolder(V viewHolderDelegate) {
+                super(viewHolderDelegate.itemView);
+                this.viewHolderDelegate = viewHolderDelegate;
             }
         }
 

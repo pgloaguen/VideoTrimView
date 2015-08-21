@@ -23,8 +23,8 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
     private GestureDetector gestureDetector;
 
     private final float minTrimInSecond = 3;
-    private final float widthInSecond = 15;
-    private final float minBetweenCursorInPercent = minTrimInSecond / widthInSecond;
+    private float widthInSecond = 15;
+    private float minBetweenCursorInPercent = minTrimInSecond / widthInSecond;
 
     private float cursorLeftX = 0f;
     private float cursorRightX = 1.0f;
@@ -84,8 +84,6 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
 
         int leftCursorRightPosition = (int) ((cursorRightX * width) - demiCursorWidth);
         mCursorRightView.layout(leftCursorRightPosition, 0, leftCursorRightPosition + width, heigth);
-
-        videoFrameView.setPixelsPerSecond(width / widthInSecond);
     }
 
     @Override
@@ -101,6 +99,12 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
         }
 
         return true;
+    }
+
+    public void setWidthInSecond(float second) {
+        widthInSecond = second;
+        minBetweenCursorInPercent =  minTrimInSecond / widthInSecond;
+        videoFrameView.setWidthInSecond(second);
     }
 
     public void setOnTrimPositionListener(onTrimPositionListener listener) {

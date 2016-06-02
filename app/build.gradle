@@ -1,13 +1,17 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 22
+    compileSdkVersion 23
     buildToolsVersion "22.0.1"
-
+    dexOptions {
+        incremental true
+        maxProcessCount 4
+        javaMaxHeapSize "4g"
+    }
     defaultConfig {
         applicationId "pgloaguen.com.videoframeview"
-        minSdkVersion 15
-        targetSdkVersion 22
+        minSdkVersion 16
+        targetSdkVersion 23
         versionCode 1
         versionName "1.0"
     }
@@ -21,6 +25,8 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:appcompat-v7:22.2.1'
+    compile 'com.android.support:appcompat-v7:23.4.0'
+    compile 'com.github.hiteshsondhi88.libffmpeg:FFmpegAndroid:0.2.5'
+    compile 'com.vistrav:ask:1.2'
     compile project(':library')
 }

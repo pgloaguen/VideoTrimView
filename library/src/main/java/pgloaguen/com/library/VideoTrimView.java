@@ -78,11 +78,18 @@ public class VideoTrimView extends FrameLayout implements GestureDetector.OnGest
 
         int heigth = bottom - top;
         int width = (right - left);
+        System.out.println("witdh___"+width);
 
         int rightCursorLeftPosition = (int) ((cursorLeftX * width) + demiCursorWidth);
+        System.out.println("______left____"+rightCursorLeftPosition);
+        if (rightCursorLeftPosition<80)
+            rightCursorLeftPosition = 30;
         mCursorLeftView.layout(rightCursorLeftPosition - width, 0, rightCursorLeftPosition, heigth);
 
         int leftCursorRightPosition = (int) ((cursorRightX * width) - demiCursorWidth);
+        System.out.println("______right____"+rightCursorLeftPosition);
+        if (leftCursorRightPosition>getWidth()-80)
+            leftCursorRightPosition = getWidth()-30;
         mCursorRightView.layout(leftCursorRightPosition, 0, leftCursorRightPosition + width, heigth);
     }
 
